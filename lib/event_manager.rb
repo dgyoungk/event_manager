@@ -1,22 +1,12 @@
 require 'csv'
 require 'google/apis/civicinfo_v2'
-
+require 'erb'
 
 
 
 # method that cleans the zipcode value in the CSV file
 def clean_zipcode(zipcode)
-  # case
-  # when zipcode.nil?
-  #   zipcode = '00000'
-  # when zipcode.length < 5
-  #   zipcode = zipcode.rjust(5, '0')
-  # when zipcode.length > 5
-  #   zipcode = zipcode[0..4]
-  # end
-  # zipcode
-
-  # reducing the switch statement into a single line
+  # reducing the conditional into a single line
   # method rjust does not change strings with length > 5
   # and vice versa with method slice ([b..e])
   zipcode.to_s.rjust(5, '0')[0..4]
@@ -31,44 +21,24 @@ def legislators_by_zipcode(zip)
       address: zip,
       levels: 'country',
       roles: ['legislatorUpperBody', 'legislatorLowerBody']
-    )
-
-    legislators = legislators.officials
-
-    legislator_names = legislators.map(&:name)
-
-    legislator_string = legislator_names.join(', ')
+    ).officials
   rescue
     'You can find your representatives by visiting www.commoncause.org/take-action/find-elected-officials'
   end
 end
 
+def save_thank_you_letter(id, form_letter)
+  # actual file creation
+  Dir.mkdir('output') unless Dir.exist?('output')
+
+  filename = %(output/thanks_#{id}.html)
+
+  File.open(filename, 'w') do |file|
+    file.puts form_letter
+  end
+end
+
 puts %(Event Manager Initialized!)
-
-# loading a CSV file using the File class
-
-# contents = File.read('event_attendees.csv')
-
-# if File.exist? 'event_attendees.csv'
-#   lines = File.readlines('event_attendees.csv')
-#   lines.each_with_index do |line, idx|
-#     next if idx == 0
-#     columns = line.split(',')
-#     puts columns[2]
-#   end
-# else
-#   puts "event_attendees.csv: No such file or directory"
-# end
-
-# loading a CSV file using the CSV library
-
-# contents = CSV.open('event_attendees.csv', headers: true)
-# contents.each do |row|
-#   name = row[2]
-#   puts name
-# end
-
-# using column names to access their values
 
 
 contents = CSV.open(
@@ -77,12 +47,21 @@ contents = CSV.open(
   header_converters: :symbol
 )
 
+template_letter = File.read('form_letter.erb')
+erb_template = ERB.new template_letter
+
 contents.each do |row|
+  # getting all the attributes needed for form_letter file creation from the CSV file
+  id = row[0]
   name = row[:first_name]
+
   zipcode = clean_zipcode(row[:zipcode])
 
+  # getting the information of gov representatives from the CivicInfo API
   legislators = legislators_by_zipcode(zipcode)
 
+  # ERB template to dynamically create forms for each attendee
+  form_letter = erb_template.result(binding)
 
-  puts %(#{name} #{zipcode} #{legislators})
+  save_thank_you_letter(id, form_letter)
 end
