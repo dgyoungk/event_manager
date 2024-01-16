@@ -12,6 +12,26 @@ def clean_zipcode(zipcode)
   zipcode.to_s.rjust(5, '0')[0..4]
 end
 
+def clean_phone_number(phone)
+  numbers_only = /\d+/
+  default_number = '5555555555'
+
+  # filters out all the non-numerical characters
+  phone = phone.scan(numbers_only).join('')
+
+  case
+  when phone.length < 10 || phone.length > 11
+    phone = default_number
+  when phone.length == 11 && phone.start_with?('1')
+    phone = phone[1..]
+  when phone.length == 11 && !phone.start_with('1')
+    phone = default_number
+  end
+
+  phone.insert(3, '-')
+  phone.insert(7, '-')
+end
+
 def legislators_by_zipcode(zip)
   civic_info = Google::Apis::CivicinfoV2::CivicInfoService.new
   civic_info.key = 'AIzaSyClRzDqDh5MsXwnCWi0kOiiBivP6JsSyBw'
@@ -57,11 +77,21 @@ contents.each do |row|
 
   zipcode = clean_zipcode(row[:zipcode])
 
+  # Assignment: Clean phone numbers
+  phone = clean_phone_number(row[:homephone])
+
+  # Assignment: Time targeting
+  # note: the date in the CSV file is in the format of MM/DD/YY
+  # TODO:
+  # - use the registration date and time to find out what the peak registration hours are
+  # https://www.theodinproject.com/lessons/ruby-event-manager#assignment-time-targeting
+
   # getting the information of gov representatives from the CivicInfo API
   legislators = legislators_by_zipcode(zipcode)
 
   # ERB template to dynamically create forms for each attendee
   form_letter = erb_template.result(binding)
 
-  save_thank_you_letter(id, form_letter)
+  # save_thank_you_letter(id, form_letter)
+
 end
