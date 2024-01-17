@@ -38,27 +38,11 @@ def get_register_time(dates)
   datetime = Time.strptime(dates, '%m-%d-%Y %k:%M')
 end
 
-def days_of_week()
-  week = {
-    Sunday: 0,
-    Monday: 1,
-    Tuesday: 2,
-    Wednesday: 3,
-    Thursday: 4,
-    Friday: 5,
-    Saturday: 6
-  }
-end
-
 def display_target_times(hour_counts)
   puts %(Hours of the day to target:)
-  hour_counts.keys.each do |hour|
-    if hour_counts[hour] == hour_counts.values.max
-      if hour > 12
-        puts %(#{hour - 12}pm)
-      else
-        puts %(#{hour}am)
-      end
+  hour_counts.keys.each do |time|
+    if hour_counts[time] == hour_counts.values.max
+      puts time.strftime("%I %p")
     end
   end
 end
@@ -121,12 +105,11 @@ contents.each do |row|
   date = get_register_time(row[:regdate])
 
   # Assignment: Time targeting
-  hour_counts[date.hour] += 1
+  hour_counts[Time.strptime(date.hour.to_s, "%k")] += 1
 
   # Assignment: Day of the week targeting
   # find out which day of the week has the most registrations
-  day_counts[days_of_week().key(date.wday)] += 1
-
+  day_counts[date.strftime("%A")] += 1
 
   # getting the information of gov representatives from the CivicInfo API
   legislators = legislators_by_zipcode(zipcode)
@@ -135,6 +118,8 @@ contents.each do |row|
   form_letter = erb_template.result(binding)
 
   # save_thank_you_letter(id, form_letter)
+
+  # testing = Time.strptime(date.wday.to_s, "%A")
 
   # display the target hours and target day
   if contents.eof?
