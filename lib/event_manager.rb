@@ -1,9 +1,9 @@
+# frozen_string_literal: false
+
 require 'csv'
 require 'google/apis/civicinfo_v2'
 require 'erb'
 require 'time'
-
-
 
 # method that cleans the zipcode value in the CSV file
 def clean_zipcode(zipcode)
@@ -16,53 +16,45 @@ end
 def clean_phone_number(phone)
   numbers_only = /\d+/
   default_number = '5555555555'
-
   # filters out all the non-numerical characters
   phone = phone.scan(numbers_only).join('')
 
-  case
-  when phone.length < 10 || phone.length > 11
+  if phone.length < 10 || phone.length > 11 || (phone.length == 11 && !phone.start_with?('1'))
     phone = default_number
-  when phone.length == 11 && phone.start_with?('1')
+  elsif phone.length == 11 && phone.start_with?('1')
     phone = phone[1..]
-  when phone.length == 11 && !phone.start_with('1')
-    phone = default_number
   end
-
   phone.insert(3, '-')
   phone.insert(7, '-')
 end
 
 def get_register_time(dates)
   dates.gsub!('/', '-').insert(dates.rindex('-') + 1, '20')
-  datetime = Time.strptime(dates, '%m-%d-%Y %k:%M')
+  Time.strptime(dates, '%m-%d-%Y %k:%M')
 end
 
 def display_target_times(hour_counts)
   puts %(Hours of the day to target:)
-  hour_counts.keys.each do |time|
-    if hour_counts[time] == hour_counts.values.max
-      puts time.strftime("%I %p")
-    end
+  hour_counts.each_key do |time|
+    puts time.strftime('%I %p') if hour_counts[time] == hour_counts.values.max
   end
 end
 
 def display_target_day(day_counts)
   puts %(Day of the week to target:)
-  day_counts.keys.each { |day, count| puts day if day_counts[day] == day_counts.values.max }
+  day_counts.each_key { |day, _count| puts day if day_counts[day] == day_counts.values.max }
 end
 
 def legislators_by_zipcode(zip)
   civic_info = Google::Apis::CivicinfoV2::CivicInfoService.new
   civic_info.key = 'AIzaSyClRzDqDh5MsXwnCWi0kOiiBivP6JsSyBw'
-
   begin
     legislators = civic_info.representative_info_by_address(
       address: zip,
       levels: 'country',
-      roles: ['legislatorUpperBody', 'legislatorLowerBody']
+      roles: %w[legislatorUpperBody legislatorLowerBody]
     ).officials
-  rescue
+  rescue StandardError
     'You can find your representatives by visiting www.commoncause.org/take-action/find-elected-officials'
   end
 end
@@ -105,11 +97,11 @@ contents.each do |row|
   date = get_register_time(row[:regdate])
 
   # Assignment: Time targeting
-  hour_counts[Time.strptime(date.hour.to_s, "%k")] += 1
+  hour_counts[Time.strptime(date.hour.to_s, '%k')] += 1
 
   # Assignment: Day of the week targeting
   # find out which day of the week has the most registrations
-  day_counts[date.strftime("%A")] += 1
+  day_counts[date.strftime('%A')] += 1
 
   # getting the information of gov representatives from the CivicInfo API
   legislators = legislators_by_zipcode(zipcode)
@@ -119,11 +111,12 @@ contents.each do |row|
 
   # save_thank_you_letter(id, form_letter)
 
-  # testing = Time.strptime(date.wday.to_s, "%A")
-
   # display the target hours and target day
   if contents.eof?
     display_target_times(hour_counts)
     display_target_day(day_counts)
   end
 end
+
+# TODO: RUBY STYLE GUIDE
+# https://www.theodinproject.com/lessons/ruby-object-oriented-programming
